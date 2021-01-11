@@ -1,12 +1,105 @@
+import base64
+import datetime
+import hmac
+import urllib.parse
+import hashlib
+import uuid
+
+import requests
+
+from error import LoadConfigError
+from util import load_config
+
+
+_AUTH_KEY = "access_key_id"
+_AUTH_SECRET = "secret_access_key"
+
+
 class QingCloudApi:
 
     def __init__(self):
-
+        self.host = "https://api.qingcloud.com"
+        self.access_key_id = ""
+        self.secret_access_key = ""
+        self.signature_method = "HmacSHA256"
+        self.version = 1
+        self.signature_version = 1
         self._load_config()
 
     def _load_config(self):
-        pass
+        config = load_config()
+        if not config or not config.get(_AUTH_KEY) or not config.get(_AUTH_SECRET):
+            raise LoadConfigError("请先配置access_key_id和secret_access_key")
+        self.access_key_id = config[_AUTH_KEY]
+        self.secret_access_key = config[_AUTH_SECRET]
 
-    def run_instances(self, instance_id):
+    @staticmethod
+    def _gen_timestamp():
+        return datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        pass
+    @staticmethod
+    def _clear_none_value(params):
+        res = {}
+        for k, v in params.items():
+            if v is None:
+                continue
+            res[k] = v
+        return res
+
+    @staticmethod
+    def _gen_signature(secret_access_key, params, method, uri):
+        querystring = "&".join([f"{k}={urllib.parse.quote_plus(str(params[k]))}" for k in sorted(params.keys())])
+        string_to_sign = method + "\n" + uri + "\n" + querystring
+        h = hmac.new(secret_access_key.encode(), digestmod=hashlib.sha256)
+        h.update(string_to_sign.encode())
+        sign = base64.b64encode(h.digest()).strip()
+        signature = urllib.parse.quote_plus(sign)
+        return signature
+
+    def run_instances(self, image_id, login_mode, zone, instance_type, login_keypair, login_passwd, cpu, memory):
+
+        uri = "iaas"
+        params = {
+            "access_key_id": self.access_key_id,
+            "version": self.version,
+            "signature_version": self.signature_version,
+            "signature_method": self.signature_method,
+            "action": "RunInstances",
+            "time_stamp": self._gen_timestamp(),
+            "image_id": image_id,
+            "login_mode": login_mode,
+            "zone": zone,
+            "instance_type": instance_type,
+            "login_keypair": login_keypair,
+            "login_passwd": login_passwd,
+            "cpu": cpu,
+            "memory": memory,
+        }
+        signature = self._gen_signature(self.secret_access_key, params, "GET", f"/{uri}/")
+        params.update({
+            "signature": urllib.parse.quote_plus(signature),
+        })
+        querystring = "&".join([f"{k}={v}" for k, v in params.items()])
+        resp = requests.get(f"{self.host}/{uri}/?{querystring}")
+        return resp.text
+
+    def describe_instances(self, zone):
+
+        uri = "iaas"
+        params = {
+            "access_key_id": self.access_key_id,
+            "version": self.version,
+            "signature_version": self.signature_version,
+            "signature_method": self.signature_method,
+            "action": "DescribeInstances",
+            "time_stamp": self._gen_timestamp(),
+            "zone": zone,
+        }
+        params = self._clear_none_value(params)
+        signature = self._gen_signature(self.secret_access_key, params, "GET", f"/{uri}/")
+        params.update({
+            "signature": signature,
+        })
+        querystring = "&".join([f"{k}={v}" for k, v in params.items()])
+        resp = requests.get(f"{self.host}/{uri}/?{querystring}")
+        return resp.text
