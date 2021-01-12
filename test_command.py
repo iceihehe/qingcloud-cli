@@ -29,7 +29,6 @@ class TestCommand(unittest.TestCase):
                     continue
                 break
 
-
     def test_config(self):
         runner = self.runner
         with runner.isolated_filesystem():
