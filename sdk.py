@@ -69,7 +69,6 @@ class QingCloudApi:
         if method == "GET":
             querystring = "&".join([f"{k}={v}" for k, v in params.items()])
             url = f"{self.host}{uri}?{querystring}"
-            print(url)
             while try_times:
                 try:
                     resp = requests.get(url)

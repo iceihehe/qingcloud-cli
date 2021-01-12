@@ -18,6 +18,10 @@
 > ```
 
 ### 使用
+#### 配置密钥
+>```
+> qing config accesskeyid secretaccesskey
+>```
 #### 创建
 > ```shell script
 > qing  run-instances instanceid loginpasswd zoneid --instance-type=c1m1  --login-passwd 123456
