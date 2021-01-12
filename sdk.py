@@ -1,6 +1,9 @@
 import base64
 import datetime
 import hmac
+import json
+import random
+import time
 import urllib.parse
 import hashlib
 import uuid
@@ -56,9 +59,31 @@ class QingCloudApi:
         signature = urllib.parse.quote_plus(sign)
         return signature
 
-    def run_instances(self, image_id, login_mode, zone, instance_type, login_keypair, login_passwd, cpu, memory):
+    def _request(self, method, uri, params, try_times=1):
 
-        uri = "iaas"
+        params = self._clear_none_value(params)
+        signature = self._gen_signature(self.secret_access_key, params, "GET", f"{uri}")
+        params.update({
+            "signature": signature,
+        })
+        if method == "GET":
+            querystring = "&".join([f"{k}={v}" for k, v in params.items()])
+            while try_times:
+                try:
+                    resp = requests.get(f"{self.host}{uri}?{querystring}")
+                except Exception:
+                    try_times -= 1
+                    if try_times == 0:
+                        raise
+                    time.sleep(random.random() * (2 ** try_times))
+                else:
+                    return resp.text
+
+        if method == "POST":
+            pass
+
+    def run_instances(self, image_id, login_mode, zone, instance_type=None, login_keypair=None, login_passwd=None, cpu=None, memory=None):
+
         params = {
             "access_key_id": self.access_key_id,
             "version": self.version,
@@ -75,17 +100,12 @@ class QingCloudApi:
             "cpu": cpu,
             "memory": memory,
         }
-        signature = self._gen_signature(self.secret_access_key, params, "GET", f"/{uri}/")
-        params.update({
-            "signature": urllib.parse.quote_plus(signature),
-        })
-        querystring = "&".join([f"{k}={v}" for k, v in params.items()])
-        resp = requests.get(f"{self.host}/{uri}/?{querystring}")
-        return resp.text
+        resp = self._request("GET", "/iaas/", params)
 
-    def describe_instances(self, zone):
+        return resp
 
-        uri = "iaas"
+    def describe_instances(self, zone, instances_n=None, instance_class=None):
+
         params = {
             "access_key_id": self.access_key_id,
             "version": self.version,
@@ -94,12 +114,9 @@ class QingCloudApi:
             "action": "DescribeInstances",
             "time_stamp": self._gen_timestamp(),
             "zone": zone,
+            "instance.n": instances_n,
+            "instance_class": instance_class,
         }
-        params = self._clear_none_value(params)
-        signature = self._gen_signature(self.secret_access_key, params, "GET", f"/{uri}/")
-        params.update({
-            "signature": signature,
-        })
-        querystring = "&".join([f"{k}={v}" for k, v in params.items()])
-        resp = requests.get(f"{self.host}/{uri}/?{querystring}")
-        return resp.text
+        resp = self._request("GET", "/iaas/", params)
+
+        return resp

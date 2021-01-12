@@ -22,13 +22,13 @@ def config(access_key_id, secret_access_key):
 @cli.command()
 @click.argument("image_id")
 @click.argument("login_mode", type=click.Choice(["keypair", "passwd"]))
-@click.argument("zone", type=click.Choice(["pek3", "pek3a", "gd2", "sh1a", "ap2a"], case_sensitive=True))
+@click.argument("zone", type=click.Choice(["pek3", "pek3a", "pek3b", "gd2", "sh1a", "ap2a"], case_sensitive=True))
 @click.option("--instance-type", help="主机类型")
 @click.option("--login-keypair", help="登录密钥ID")
 @click.option("--login-passwd", help="登录密码")
-@click.option("--cpu", help="CPU core，有效值为: 1, 2, 4, 8, 16", type=click.Choice(["1", "2", "4", "8", "16"]))
-@click.option("--memory", help="内存，有效值为: 1024, 2048, 4096, 6144, 8192, 12288, 16384, 24576, 32768", type=click.Choice(["1024", "2048", "4096", "6144", "8192", "12288", "16384", "24576", "32768"]))
-def run(image_id, login_mode, zone, instance_type, login_keypair, login_passwd, cpu, memory):
+@click.option("--cpu", help="CPU核心", type=click.Choice(["1", "2", "4", "8", "16"]))
+@click.option("--memory", help="内存", type=click.Choice(["1024", "2048", "4096", "6144", "8192", "12288", "16384", "24576", "32768"]))
+def run_instances(image_id, login_mode, zone, instance_type, login_keypair, login_passwd, cpu, memory):
     """
     创建指定配置，指定数量的主机
 
@@ -55,30 +55,40 @@ def run(image_id, login_mode, zone, instance_type, login_keypair, login_passwd, 
     except LoadConfigError as e:
         click.echo(e)
         return
-
+    click.echo(f"创建主机请求发送中...")
     resp = qing_obj.run_instances(
         image_id, login_mode, zone,
         instance_type=instance_type, login_keypair=login_keypair, login_passwd=login_passwd, cpu=cpu, memory=memory
     )
-    click.echo(f"创建主机请求发送成功，平台返回{resp}")
+    click.echo(f"创建主机请求发送成功，平台返回\n**************\n{resp}")
 
 
 @cli.command()
-@click.argument("zone", type=click.Choice(["pek3", "pek3b", "gd2", "sh1a", "ap2a"], case_sensitive=True))
-def describe(zone):
+@click.argument("zone", type=click.Choice(["pek3", "pek3a", "pek3b", "gd2", "sh1a", "ap2a"], case_sensitive=True))
+@click.option("--instance-id", help="主机ID", multiple=True)
+@click.option("--instance-class", type=click.Choice(["0", "1", "101", "201"]), help="主机ID")
+def describe_instances(zone, instance_id, instance_class):
     """
     获取一个或多个主机
 
     ZONE 区域 ID，注意要小写
     """
+    if instance_class:
+        instance_class = int(instance_class)
+
     try:
         qing_obj = QingCloudApi()
     except LoadConfigError as e:
         click.echo(e)
         return
 
-    resp = qing_obj.describe_instances(zone)
-    click.echo(f"获取主机请求发送成功，平台返回{resp}")
+    click.echo(f"获取主机请求发送中...")
+    resp = qing_obj.describe_instances(
+        zone,
+        instances_n=instance_id or None,
+        instance_class=instance_class
+    )
+    click.echo(f"获取主机请求发送成功，结果如下\n****************\n{resp}")
 
 
 if __name__ == '__main__':
