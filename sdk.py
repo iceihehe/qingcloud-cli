@@ -68,9 +68,11 @@ class QingCloudApi:
         })
         if method == "GET":
             querystring = "&".join([f"{k}={v}" for k, v in params.items()])
+            url = f"{self.host}{uri}?{querystring}"
+            print(url)
             while try_times:
                 try:
-                    resp = requests.get(f"{self.host}{uri}?{querystring}")
+                    resp = requests.get(url)
                 except Exception:
                     try_times -= 1
                     if try_times == 0:
@@ -104,7 +106,7 @@ class QingCloudApi:
 
         return resp
 
-    def describe_instances(self, zone, instances_n=None, instance_class=None):
+    def describe_instances(self, zone, instances__n=None, instance_class=None):
 
         params = {
             "access_key_id": self.access_key_id,
@@ -114,9 +116,35 @@ class QingCloudApi:
             "action": "DescribeInstances",
             "time_stamp": self._gen_timestamp(),
             "zone": zone,
-            "instance.n": instances_n,
             "instance_class": instance_class,
         }
+        params.update(self._dot_n("instances", instances__n))
         resp = self._request("GET", "/iaas/", params)
 
         return resp
+
+    def terminate_instances(self, zone, instances__n=None, direct_cease=None):
+        params = {
+            "access_key_id": self.access_key_id,
+            "version": self.version,
+            "signature_version": self.signature_version,
+            "signature_method": self.signature_method,
+            "action": "TerminateInstances",
+            "time_stamp": self._gen_timestamp(),
+            "zone": zone,
+            "direct_cease": direct_cease,
+        }
+        params.update(self._dot_n("instances", instances__n))
+        resp = self._request("GET", "/iaas/", params)
+
+        return resp
+
+    @staticmethod
+    def _dot_n(key, value):
+        res = {}
+        if not value:
+            return {}
+        i = 1
+        for v in value:
+            res[f"{key}.{i}"] = v
+        return res

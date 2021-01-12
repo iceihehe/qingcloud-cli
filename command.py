@@ -85,10 +85,38 @@ def describe_instances(zone, instance_id, instance_class):
     click.echo(f"获取主机请求发送中...")
     resp = qing_obj.describe_instances(
         zone,
-        instances_n=instance_id or None,
+        instances__n=instance_id or None,
         instance_class=instance_class
     )
     click.echo(f"获取主机请求发送成功，结果如下\n****************\n{resp}")
+
+
+@cli.command()
+@click.argument("zone", type=click.Choice(["pek3", "pek3a", "pek3b", "gd2", "sh1a", "ap2a"], case_sensitive=True))
+@click.option("--instance-id", help="主机ID", multiple=True)
+@click.option("--direct-cease", type=click.Choice(["0", "1"]), help="1/0 直接销毁/进入回收站")
+def terminate_instances(zone, instance_id, direct_cease):
+    """
+    获取一个或多个主机
+
+    ZONE 区域 ID，注意要小写
+    """
+    if direct_cease:
+        direct_cease = int(direct_cease)
+
+    try:
+        qing_obj = QingCloudApi()
+    except LoadConfigError as e:
+        click.echo(e)
+        return
+
+    click.echo(f"销毁主机请求发送中...")
+    resp = qing_obj.terminate_instances(
+        zone,
+        instances__n=instance_id or None,
+        direct_cease=direct_cease
+    )
+    click.echo(f"销毁主机请求发送成功，结果如下\n****************\n{resp}")
 
 
 if __name__ == '__main__':
