@@ -34,7 +34,8 @@ def config(access_key_id, secret_access_key):
 @click.option("--login-keypair", help="登录密钥ID")
 @click.option("--login-passwd", help="登录密码")
 @click.option("--cpu", help="CPU核心", type=click.Choice(["1", "2", "4", "8", "16"]))
-@click.option("--memory", help="内存", type=click.Choice(["1024", "2048", "4096", "6144", "8192", "12288", "16384", "24576", "32768"]))
+@click.option("--memory", help="内存", type=click.Choice(["1024", "2048", "4096", "6144", "8192", "12288", "16384",
+                                                        "24576", "32768"]))
 def run_instances(image_id, login_mode, zone, instance_type, login_keypair, login_passwd, cpu, memory):
     """
     创建指定配置，指定数量的主机

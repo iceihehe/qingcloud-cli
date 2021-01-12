@@ -1,4 +1,5 @@
 import json
+import time
 import unittest
 
 from click.testing import CliRunner
@@ -6,27 +7,38 @@ from unittest.mock import MagicMock, patch
 
 from command import cli
 from sdk import QingCloudApi
-from util import load_config, _CONFIG_FILE, _AUTH_KEY, _AUTH_SECRET
+from util import load_config, _AUTH_KEY, _AUTH_SECRET
 
 
 class TestCommand(unittest.TestCase):
 
     def setUp(self):
         self.runner = CliRunner()
+        self.created_instance_id = None
+        self.zone = "pek3b"
 
     def tearDown(self):
-        pass
+        # 不太科学
+        if self.created_instance_id:
+            n = 5
+            while n:
+                res = json.loads(QingCloudApi().terminate_instances(self.zone, [self.created_instance_id]))
+                if res["ret_code"] == 1400:
+                    time.sleep(30)
+                    n -= 1
+                    continue
+                break
+
 
     def test_config(self):
         runner = self.runner
         with runner.isolated_filesystem():
             runner.invoke(cli, ["config", "a", "b"])
-            with open(_CONFIG_FILE, "r") as f:
-                config = load_config()
-                assert _AUTH_KEY in config
-                assert config[_AUTH_KEY] == "a"
-                assert _AUTH_SECRET in config
-                assert config[_AUTH_SECRET] == "b"
+            config = load_config()
+            assert _AUTH_KEY in config
+            assert config[_AUTH_KEY] == "a"
+            assert _AUTH_SECRET in config
+            assert config[_AUTH_SECRET] == "b"
 
     def test_describe_instances_mock(self):
         runner = self.runner
@@ -38,9 +50,9 @@ class TestCommand(unittest.TestCase):
 
     def test_describe_instances(self):
         runner = self.runner
-        result = runner.invoke(cli, ["describe-instances", "pek3b"])
+        result = runner.invoke(cli, ["describe-instances", self.zone])
         result_json = json.loads(result.output.strip())
-        assert result_json["ret_code"] == 0
+        assert result_json["ret_code"] in (0, 1200)
 
     def test_run_instances_mock(self):
         runner = self.runner
@@ -57,10 +69,11 @@ class TestCommand(unittest.TestCase):
 
     def test_run_instances(self):
         runner = self.runner
-        result = runner.invoke(cli, ["run-instances", "debian106x64", "passwd", "pek3b", "--login-passwd=yERxtw49",
+        result = runner.invoke(cli, ["run-instances", "debian106x64", "passwd", self.zone, "--login-passwd=yERxtw49",
                                      "--instance-type=c1m1"])
         result_json = json.loads(result.output.strip())
-        assert result_json["ret_code"] == 0
+        assert result_json["ret_code"] in (0, 1200)
+        self.created_instance_id = result_json["instances"][0]
 
     def test_terminate_instances_mock(self):
         runner = self.runner
@@ -74,7 +87,7 @@ class TestCommand(unittest.TestCase):
         runner = self.runner
         result = runner.invoke(cli, ["terminate-instances", "pek3b", "--instance-id=fakeid"])
         result_json = json.loads(result.output.strip())
-        assert result_json["ret_code"] == 2100
+        assert result_json["ret_code"] in (0, 1200, 2100)
 
 
 if __name__ == '__main__':

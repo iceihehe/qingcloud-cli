@@ -1,12 +1,10 @@
 import base64
 import datetime
 import hmac
-import json
 import random
 import time
 import urllib.parse
 import hashlib
-import uuid
 
 import requests
 
@@ -71,7 +69,7 @@ class QingCloudApi:
             url = f"{self.host}{uri}?{querystring}"
             while try_times:
                 try:
-                    resp = requests.get(url)
+                    resp = requests.get(url, timeout=5)
                 except Exception:
                     try_times -= 1
                     if try_times == 0:
@@ -83,7 +81,8 @@ class QingCloudApi:
         if method == "POST":
             pass
 
-    def run_instances(self, image_id, login_mode, zone, instance_type=None, login_keypair=None, login_passwd=None, cpu=None, memory=None):
+    def run_instances(self, image_id, login_mode, zone, instance_type=None, login_keypair=None, login_passwd=None,
+                      cpu=None, memory=None):
 
         params = {
             "access_key_id": self.access_key_id,
